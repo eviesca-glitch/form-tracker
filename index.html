@@ -88,6 +88,76 @@ html,body { height:100%; background:var(--black); color:var(--white); font-famil
 .rec-dot { width:8px;height:8px;background:var(--red);border-radius:50%;animation:pulse 1s infinite; }
 @keyframes pulse { 0%,100%{opacity:1}50%{opacity:.3} }
 
+/* ── SHOT HUD OVERLAY (on camera) ── */
+.shot-hud {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 15;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+.shot-hud.show { opacity: 1; }
+.shot-hud.fade { opacity: 0; }
+
+.hud-box {
+  background: rgba(0,0,0,0.75);
+  border: 1px solid rgba(0,230,118,0.4);
+  border-radius: 10px;
+  padding: 8px 14px;
+  text-align: right;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  min-width: 110px;
+}
+.hud-label {
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: rgba(0,230,118,0.8);
+  text-transform: uppercase;
+  margin-bottom: 2px;
+}
+.hud-value {
+  font-size: 32px;
+  font-weight: 900;
+  letter-spacing: -1px;
+  color: #fff;
+  line-height: 1;
+}
+.hud-unit {
+  font-size: 9px;
+  font-weight: 600;
+  color: rgba(255,255,255,0.5);
+  letter-spacing: 1.5px;
+  margin-top: 1px;
+}
+.hud-club-tag {
+  background: rgba(255,171,0,0.2);
+  border: 1px solid rgba(255,171,0,0.5);
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: var(--amber);
+  text-align: center;
+}
+.hud-row {
+  display: flex;
+  gap: 6px;
+}
+.hud-row .hud-box {
+  flex: 1;
+  min-width: 0;
+  text-align: center;
+}
+.hud-row .hud-value { font-size: 20px; }
+
 /* ── RESULT OVERLAY ── */
 .result-overlay { position:absolute;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.88);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;opacity:0;transition:opacity .3s;pointer-events:none;z-index:20; }
 .result-overlay.show { opacity:1;pointer-events:all; }
@@ -243,20 +313,21 @@ html,body { height:100%; background:var(--black); color:var(--white); font-famil
   .ls-btn-gray { background: var(--panel); color: var(--white); border: 1px solid var(--border); }
 
   /* Camera fills remaining space */
-  .camera-wrap { flex: 1; height: 100dvh; min-width: 0; }
+  .camera-wrap { flex: 1; height: 100dvh; min-width: 0; width: 0; }
 
   #liveVideo, #liveCanvas, #reviewCanvas {
     width: 100%; height: 100%; object-fit: cover;
   }
 
   /* Hide portrait-only elements */
-  .view-header { display: none; }
-  .club-bar { display: none; }
-  .cam-mode-toggle { display: none; }
+  .view-header { display: none !important; }
+  .club-bar { display: none !important; }
+  .cam-mode-toggle { display: none !important; }
   .stats-panel { display: none !important; }
   .history-strip { display: none !important; }
-  .controls { display: none; }
-  .upload-zone { display: none; }
+  .controls { display: none !important; }
+  .upload-zone { display: none !important; }
+  .avg-row { display: none !important; }
 
   /* Review landscape: show canvas + sidebar */
   #reviewView .ls-sidebar { display: flex; }
@@ -351,6 +422,29 @@ html,body { height:100%; background:var(--black); color:var(--white); font-famil
   <div class="camera-wrap">
     <video id="liveVideo" autoplay playsinline muted></video>
     <canvas id="liveCanvas"></canvas>
+
+    <!-- SHOT HUD OVERLAY -->
+    <div class="shot-hud" id="liveHud">
+      <div class="hud-club-tag" id="hudClub">DRIVER</div>
+      <div class="hud-box">
+        <div class="hud-label">Carry</div>
+        <div class="hud-value" id="hudCarry">--</div>
+        <div class="hud-unit">YARDS</div>
+      </div>
+      <div class="hud-row">
+        <div class="hud-box">
+          <div class="hud-label">Speed</div>
+          <div class="hud-value" id="hudSpeed">--</div>
+          <div class="hud-unit">MPH</div>
+        </div>
+        <div class="hud-box">
+          <div class="hud-label">Launch</div>
+          <div class="hud-value" id="hudLaunch">--</div>
+          <div class="hud-unit">DEG</div>
+        </div>
+      </div>
+    </div>
+
     <div class="camera-overlay">
       <div class="aim-guide" id="aimGuide"><div class="aim-dot"></div><div class="aim-label">AIM AT BALL</div></div>
     </div>
@@ -923,6 +1017,21 @@ function showLiveResult(result) {
   stopLiveTracking();
   addShot(result);
 
+  // ── Update HUD overlay on camera ──
+  const hud = document.getElementById('liveHud');
+  document.getElementById('hudCarry').textContent = result.carry;
+  document.getElementById('hudSpeed').textContent = result.speed;
+  document.getElementById('hudLaunch').textContent = result.launch;
+  document.getElementById('hudClub').textContent = selectedClub.toUpperCase();
+  hud.classList.remove('fade');
+  hud.classList.add('show');
+  // Auto-fade after 6 seconds
+  if (window._hudTimer) clearTimeout(window._hudTimer);
+  window._hudTimer = setTimeout(() => {
+    hud.classList.add('fade');
+    setTimeout(() => hud.classList.remove('show','fade'), 400);
+  }, 6000);
+
   document.getElementById('liveCarry').textContent = result.carry;
   document.getElementById('liveSpeed').textContent = result.speed;
   document.getElementById('liveLaunch').textContent = result.launch;
@@ -946,6 +1055,7 @@ function showLiveResult(result) {
 function dismissLiveResult() {
   document.getElementById('liveResult').classList.remove('show');
   document.getElementById('aimGuide').style.display = 'flex';
+  // Keep HUD visible after dismissing full result
 }
 
 function updateLiveAvgs() {
@@ -971,6 +1081,10 @@ function renderLiveHistory() {
 
 function resetLive() {
   stopLiveTracking(); liveHistory = []; ballTrail = [];
+  // Clear HUD
+  const hud = document.getElementById('liveHud');
+  if (hud) { hud.classList.remove('show','fade'); }
+  if (window._hudTimer) clearTimeout(window._hudTimer);
   document.getElementById('liveResult').classList.remove('show');
   document.getElementById('aimGuide').style.display = 'flex';
   document.getElementById('liveHistory').classList.add('hidden');
