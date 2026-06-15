@@ -7,277 +7,148 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Form">
 <title>Form Tracker</title>
-
-<!-- TensorFlow.js + Pose Detection -->
 <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.10.0/dist/tf.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/pose-detection@2.1.3/dist/pose-detection.min.js"></script>
-
 <style>
 * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
 :root {
-  --black:#080808;
-  --dark:#101010;
-  --panel:#181818;
-  --border:#252525;
-  --green:#00e676;
-  --green-dim:rgba(0,230,118,0.15);
-  --amber:#ffab00;
-  --red:#ff3d3d;
-  --blue:#448aff;
-  --white:#f2f2f2;
-  --gray:#555;
-  --gray-light:#888;
+  --black:#080808; --dark:#101010; --panel:#181818; --border:#252525;
+  --green:#00e676; --amber:#ffab00; --red:#ff3d3d; --blue:#448aff;
+  --white:#f2f2f2; --gray:#555; --gray-light:#888;
 }
-
-html,body {
-  height:100%; background:var(--black); color:var(--white);
-  font-family:'Helvetica Neue',Arial,sans-serif; overflow:hidden;
-}
+html,body { height:100%; background:var(--black); color:var(--white); font-family:'Helvetica Neue',Arial,sans-serif; overflow:hidden; }
 
 /* ── HOME ── */
-#home {
-  display:flex; flex-direction:column; height:100dvh;
-}
-
-.home-top {
-  padding:56px 28px 24px;
-  border-bottom:1px solid var(--border);
-}
-
-.app-eye {
-  font-size:9px; font-weight:700; letter-spacing:3.5px;
-  color:var(--green); text-transform:uppercase; margin-bottom:10px;
-}
-
-.app-name {
-  font-size:42px; font-weight:900; letter-spacing:-2px; line-height:.95;
-  color:var(--white);
-}
-
+#home { display:flex; flex-direction:column; height:100dvh; }
+.home-top { padding:56px 28px 24px; border-bottom:1px solid var(--border); }
+.app-eye { font-size:9px; font-weight:700; letter-spacing:3.5px; color:var(--green); text-transform:uppercase; margin-bottom:10px; }
+.app-name { font-size:42px; font-weight:900; letter-spacing:-2px; line-height:.95; }
 .app-name span { color:var(--green); }
-
-.app-sub {
-  font-size:12px; color:var(--gray-light); margin-top:8px; line-height:1.5;
-}
-
-.exercise-list {
-  flex:1; overflow-y:auto; padding:16px 0;
-}
-
-.ex-item {
-  display:flex; align-items:center; gap:16px;
-  padding:16px 28px; cursor:pointer; border-bottom:1px solid var(--border);
-  transition:background .12s; -webkit-user-select:none;
-}
+.app-sub { font-size:12px; color:var(--gray-light); margin-top:8px; line-height:1.5; }
+.exercise-list { flex:1; overflow-y:auto; }
+.ex-item { display:flex; align-items:center; gap:16px; padding:16px 28px; cursor:pointer; border-bottom:1px solid var(--border); transition:background .12s; -webkit-user-select:none; }
 .ex-item:active { background:var(--panel); }
-
-.ex-icon {
-  width:44px; height:44px; border-radius:12px;
-  display:flex; align-items:center; justify-content:center;
-  font-size:20px; flex-shrink:0;
-}
-
+.ex-icon { width:44px; height:44px; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:20px; flex-shrink:0; }
 .ex-icon.pull { background:rgba(0,230,118,.12); }
 .ex-icon.push { background:rgba(68,138,255,.12); }
 .ex-icon.dip  { background:rgba(255,171,0,.12); }
 .ex-icon.hspu { background:rgba(255,61,61,.12); }
-
 .ex-info { flex:1; }
 .ex-name { font-size:16px; font-weight:700; margin-bottom:2px; }
 .ex-cues { font-size:11px; color:var(--gray-light); line-height:1.4; }
 .ex-arrow { font-size:18px; color:var(--gray); }
-
-.home-tip {
-  padding:14px 28px 32px;
-  border-top:1px solid var(--border);
-  font-size:11px; color:var(--gray-light); line-height:1.6;
-}
+.home-tip { padding:14px 28px 32px; border-top:1px solid var(--border); font-size:11px; color:var(--gray-light); line-height:1.6; }
 .home-tip b { color:var(--green); font-weight:700; }
 
 /* ── TRACKER VIEW ── */
-#trackerView {
-  display:none; flex-direction:column; height:100dvh; overflow:hidden;
-}
+#trackerView { display:none; flex-direction:column; height:100dvh; overflow:hidden; }
 #trackerView.active { display:flex; }
 
-/* ── CAMERA ── */
-.cam-wrap {
-  position:relative; flex:1; background:#000; overflow:hidden; min-height:0;
-}
+/* ── MODE TOGGLE ── */
+.mode-toggle { display:flex; border-bottom:1px solid var(--border); flex-shrink:0; }
+.mode-tab { flex:1; padding:10px; text-align:center; font-size:11px; font-weight:700; letter-spacing:1.5px; text-transform:uppercase; cursor:pointer; color:var(--gray); transition:all .15s; border-bottom:2px solid transparent; }
+.mode-tab.active { color:var(--green); border-bottom-color:var(--green); }
 
-#video {
-  position:absolute; top:0; left:0;
-  width:100%; height:100%; object-fit:cover;
-  /* back camera — no mirror needed */
-}
+/* ── CAMERA AREA ── */
+.cam-wrap { position:relative; flex:1; background:#000; overflow:hidden; min-height:0; }
+#liveVideo { position:absolute; top:0; left:0; width:100%; height:100%; object-fit:cover; transform:scaleX(-1); }
+#liveCanvas { position:absolute; top:0; left:0; width:100%; height:100%; transform:scaleX(-1); }
+#reviewCanvas { position:absolute; top:0; left:0; width:100%; height:100%; object-fit:contain; display:none; }
 
-#poseCanvas {
-  position:absolute; top:0; left:0;
-  width:100%; height:100%;
-  /* no mirror */
-}
+/* Upload zone */
+.upload-zone { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:16px; padding:40px; cursor:pointer; background:var(--dark); }
+.upload-icon { font-size:52px; opacity:.4; }
+.upload-text { font-size:17px; font-weight:700; }
+.upload-sub { font-size:12px; color:var(--gray-light); text-align:center; line-height:1.6; }
 
-/* Loading state */
-.cam-loader {
-  position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
-  display:flex; flex-direction:column; align-items:center; gap:12px;
-  z-index:5;
-}
-.loader-ring {
-  width:40px; height:40px; border:3px solid var(--border);
-  border-top-color:var(--green); border-radius:50%;
-  animation:spin 0.8s linear infinite;
-}
+/* Progress bar */
+.progress-bar { position:absolute; bottom:0; left:0; height:3px; background:var(--green); width:0%; transition:width .1s; z-index:15; }
+
+/* Loader */
+.cam-loader { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); display:flex; flex-direction:column; align-items:center; gap:12px; z-index:5; }
+.loader-ring { width:40px; height:40px; border:3px solid var(--border); border-top-color:var(--green); border-radius:50%; animation:spin .8s linear infinite; }
 @keyframes spin { to { transform:rotate(360deg); } }
 .loader-text { font-size:10px; font-weight:700; letter-spacing:2px; color:var(--green); }
 
-/* ── HUD TOP BAR ── */
-.hud-bar {
-  position:absolute; top:0; left:0; right:0;
-  display:flex; align-items:center; gap:10px;
-  padding:52px 16px 10px;
-  background:linear-gradient(to bottom, rgba(0,0,0,0.8) 0%, transparent 100%);
-  z-index:10; pointer-events:none;
-}
+/* HUD */
+.hud-bar { position:absolute; top:0; left:0; right:0; display:flex; align-items:center; gap:10px; padding:52px 16px 10px; background:linear-gradient(to bottom,rgba(0,0,0,.8) 0%,transparent 100%); z-index:10; pointer-events:none; }
+.hud-back { width:34px; height:34px; border-radius:10px; background:rgba(255,255,255,.1); border:1px solid rgba(255,255,255,.15); display:flex; align-items:center; justify-content:center; font-size:15px; pointer-events:all; cursor:pointer; flex-shrink:0; }
+.hud-ex-name { font-size:15px; font-weight:800; flex:1; }
+.hud-rep-badge { background:var(--green); color:#000; font-size:13px; font-weight:900; padding:5px 12px; border-radius:20px; pointer-events:all; }
 
-.hud-back {
-  width:34px; height:34px; border-radius:10px;
-  background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.15);
-  display:flex; align-items:center; justify-content:center;
-  font-size:15px; pointer-events:all; cursor:pointer; flex-shrink:0;
-}
+/* Angle indicator */
+.angle-display { position:absolute; top:50%; right:16px; transform:translateY(-50%); background:rgba(0,0,0,.75); border:1px solid rgba(255,255,255,.15); border-radius:10px; padding:8px 12px; text-align:center; z-index:10; pointer-events:none; opacity:0; transition:opacity .3s; }
+.angle-display.show { opacity:1; }
+.angle-val { font-size:28px; font-weight:900; letter-spacing:-1px; }
+.angle-lbl { font-size:8px; color:var(--gray-light); letter-spacing:2px; text-transform:uppercase; }
 
-.hud-ex-name {
-  font-size:15px; font-weight:800; letter-spacing:-.3px; flex:1;
-}
-
-.hud-rep-badge {
-  background:var(--green); color:#000;
-  font-size:13px; font-weight:900; letter-spacing:-.5px;
-  padding:5px 12px; border-radius:20px;
-  pointer-events:all;
-}
-
-/* ── FORM FEEDBACK OVERLAY ── */
-.feedback-wrap {
-  position:absolute; bottom:0; left:0; right:0;
-  padding:12px 16px 16px;
-  background:linear-gradient(to top, rgba(0,0,0,0.85) 0%, transparent 100%);
-  z-index:10; pointer-events:none;
-}
-
-.feedback-row {
-  display:flex; gap:8px; margin-bottom:8px; flex-wrap:wrap;
-}
-
-.feedback-chip {
-  display:flex; align-items:center; gap:5px;
-  padding:5px 10px; border-radius:20px;
-  font-size:10px; font-weight:700; letter-spacing:.5px;
-  border:1px solid transparent;
-  opacity:0; transform:translateY(4px);
-  transition:opacity .3s, transform .3s;
-}
+/* Feedback */
+.feedback-wrap { position:absolute; bottom:0; left:0; right:0; padding:12px 16px 16px; background:linear-gradient(to top,rgba(0,0,0,.85) 0%,transparent 100%); z-index:10; pointer-events:none; }
+.feedback-row { display:flex; gap:8px; margin-bottom:8px; flex-wrap:wrap; }
+.feedback-chip { display:flex; align-items:center; gap:5px; padding:5px 10px; border-radius:20px; font-size:10px; font-weight:700; letter-spacing:.5px; border:1px solid transparent; opacity:0; transform:translateY(4px); transition:opacity .3s,transform .3s; }
 .feedback-chip.show { opacity:1; transform:translateY(0); }
 .feedback-chip.good { background:rgba(0,230,118,.15); border-color:rgba(0,230,118,.4); color:var(--green); }
 .feedback-chip.warn { background:rgba(255,171,0,.15); border-color:rgba(255,171,0,.4); color:var(--amber); }
-.feedback-chip.bad  { background:rgba(255,61,61,.15);  border-color:rgba(255,61,61,.4);  color:var(--red); }
+.feedback-chip.bad  { background:rgba(255,61,61,.15); border-color:rgba(255,61,61,.4); color:var(--red); }
+.chip-dot { width:5px; height:5px; border-radius:50%; background:currentColor; }
+.main-feedback { font-size:13px; font-weight:700; color:var(--white); min-height:20px; }
 
-.feedback-chip .chip-dot { width:5px; height:5px; border-radius:50%; background:currentColor; }
+/* Review scrubber */
+.scrubber-wrap { position:absolute; bottom:60px; left:16px; right:16px; z-index:15; display:none; }
+.scrubber-wrap.show { display:block; }
+input[type=range] { width:100%; accent-color:var(--green); }
+.scrubber-time { text-align:center; font-size:10px; color:var(--gray-light); letter-spacing:1px; margin-top:4px; }
 
-.main-feedback {
-  font-size:13px; font-weight:700; color:var(--white);
-  min-height:20px; letter-spacing:-.2px;
-}
+/* Rep timeline */
+.rep-timeline { position:absolute; bottom:100px; left:16px; right:16px; display:flex; gap:4px; z-index:15; flex-wrap:wrap; }
+.rep-dot { width:28px; height:28px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:9px; font-weight:800; cursor:pointer; border:2px solid transparent; transition:transform .1s; }
+.rep-dot:active { transform:scale(.9); }
+.rep-dot.good-rep { background:rgba(0,230,118,.2); border-color:var(--green); color:var(--green); }
+.rep-dot.warn-rep { background:rgba(255,171,0,.2); border-color:var(--amber); color:var(--amber); }
+.rep-dot.bad-rep  { background:rgba(255,61,61,.2); border-color:var(--red); color:var(--red); }
 
-/* ── STATS ROW ── */
-.stats-strip {
-  display:flex; border-top:1px solid var(--border);
-  background:var(--dark); flex-shrink:0;
-}
-
-.stat-cell {
-  flex:1; padding:12px 8px; text-align:center;
-  border-right:1px solid var(--border);
-}
+/* ── STATS ── */
+.stats-strip { display:flex; border-top:1px solid var(--border); background:var(--dark); flex-shrink:0; }
+.stat-cell { flex:1; padding:10px 8px; text-align:center; border-right:1px solid var(--border); }
 .stat-cell:last-child { border-right:none; }
-
-.stat-val {
-  font-size:22px; font-weight:900; letter-spacing:-1px; color:var(--white);
-  line-height:1;
-}
+.stat-val { font-size:20px; font-weight:900; letter-spacing:-1px; line-height:1; }
 .stat-val.green { color:var(--green); }
 .stat-val.amber { color:var(--amber); }
 .stat-val.red   { color:var(--red); }
-
-.stat-lbl {
-  font-size:7px; font-weight:700; letter-spacing:2px;
-  color:var(--gray); text-transform:uppercase; margin-top:3px;
-}
+.stat-lbl { font-size:7px; font-weight:700; letter-spacing:2px; color:var(--gray); text-transform:uppercase; margin-top:3px; }
 
 /* ── CONTROLS ── */
-.controls {
-  display:flex; gap:8px; padding:10px 16px 28px;
-  background:var(--black); flex-shrink:0;
-}
-
-.btn {
-  flex:1; height:50px; border-radius:14px; border:none;
-  font-size:13px; font-weight:800; letter-spacing:.3px;
-  cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px;
-  transition:opacity .1s, transform .1s;
-}
+.controls { display:flex; gap:8px; padding:10px 16px 28px; background:var(--black); flex-shrink:0; }
+.btn { flex:1; height:50px; border-radius:14px; border:none; font-size:13px; font-weight:800; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px; transition:opacity .1s,transform .1s; }
 .btn:active { opacity:.8; transform:scale(.98); }
 .btn-start { background:var(--green); color:#000; }
 .btn-stop  { background:var(--red); color:#fff; }
 .btn-reset { background:var(--panel); color:var(--white); border:1px solid var(--border); }
-
-.rec-dot {
-  width:8px; height:8px; background:#fff; border-radius:50%;
-  animation:pulse 1s infinite;
-}
+.btn-analyze { background:var(--amber); color:#000; }
+.btn-disabled { background:var(--panel); color:var(--gray); border:1px solid var(--border); cursor:not-allowed; }
+.rec-dot { width:8px; height:8px; background:#fff; border-radius:50%; animation:pulse 1s infinite; }
 @keyframes pulse { 0%,100%{opacity:1}50%{opacity:.3} }
 
-/* ── HISTORY PANEL ── */
-.history-strip {
-  display:flex; gap:8px; padding:8px 16px;
-  overflow-x:auto; background:var(--dark);
-  border-top:1px solid var(--border); flex-shrink:0;
-  -webkit-overflow-scrolling:touch;
-}
-.history-strip::-webkit-scrollbar { display:none; }
+/* ── SETUP MODAL ── */
+#setupModal { display:none; position:fixed; inset:0; background:rgba(0,0,0,.97); z-index:100; flex-direction:column; }
+.setup-head { padding:56px 28px 20px; border-bottom:1px solid var(--border); }
+.setup-label { font-size:9px; font-weight:700; letter-spacing:3px; color:var(--green); text-transform:uppercase; margin-bottom:8px; }
+.setup-title { font-size:26px; font-weight:900; letter-spacing:-1px; }
+.setup-body { flex:1; overflow-y:auto; padding:24px 28px; }
+.setup-foot { padding:16px 28px 40px; display:flex; gap:10px; }
+.setup-btn { flex:1; height:54px; border:none; border-radius:14px; font-size:14px; font-weight:800; cursor:pointer; }
+.setup-btn-primary { background:var(--green); color:#000; }
+.setup-btn-secondary { background:var(--panel); color:var(--white); border:1px solid var(--border); }
 
-.hist-item {
-  flex-shrink:0; background:var(--panel); border:1px solid var(--border);
-  border-radius:8px; padding:6px 10px; min-width:52px; text-align:center;
-}
-.hist-item.best { border-color:var(--green); }
-.hist-val { font-size:16px; font-weight:900; }
-.hist-lbl { font-size:7px; color:var(--gray); letter-spacing:1px; }
-
-/* ── ANGLE INDICATOR (on canvas overlay) ── */
-.angle-display {
-  position:absolute; top:50%; right:16px;
-  transform:translateY(-50%);
-  background:rgba(0,0,0,0.7); border:1px solid rgba(255,255,255,0.15);
-  border-radius:10px; padding:8px 12px; text-align:center;
-  z-index:10; pointer-events:none;
-  opacity:0; transition:opacity .3s;
-}
-.angle-display.show { opacity:1; }
-.angle-val { font-size:28px; font-weight:900; color:var(--white); letter-spacing:-1px; }
-.angle-lbl { font-size:8px; color:var(--gray-light); letter-spacing:2px; text-transform:uppercase; }
-
-/* ── LANDSCAPE ── */
-@media (orientation:landscape) {
-  #trackerView { flex-direction:row; }
-  .cam-wrap { flex:1; height:100dvh; }
-  .stats-strip { flex-direction:column; width:100px; border-top:none; border-left:1px solid var(--border); }
-  .stat-cell { border-right:none; border-bottom:1px solid var(--border); }
-  .controls { flex-direction:column; width:100px; padding:8px; background:var(--black); border-left:1px solid var(--border); }
-  .history-strip { display:none; }
-  .btn { height:42px; font-size:11px; }
-}
+/* ── REP DETAIL OVERLAY ── */
+#repDetail { display:none; position:fixed; inset:0; background:rgba(0,0,0,.9); z-index:200; flex-direction:column; align-items:center; justify-content:center; padding:32px; }
+#repDetail.show { display:flex; }
+.rd-title { font-size:11px; font-weight:700; letter-spacing:3px; color:var(--green); text-transform:uppercase; margin-bottom:8px; }
+.rd-rep { font-size:64px; font-weight:900; letter-spacing:-3px; line-height:1; }
+.rd-angle { font-size:18px; color:var(--gray-light); margin-top:4px; }
+.rd-feedback { margin-top:20px; display:flex; flex-direction:column; gap:8px; width:100%; }
+.rd-chip { padding:10px 14px; border-radius:10px; font-size:12px; font-weight:700; }
+.rd-close { margin-top:24px; font-size:12px; color:var(--green); border:1px solid var(--green); padding:10px 28px; border-radius:8px; cursor:pointer; background:transparent; }
 
 .hidden { display:none !important; }
 </style>
@@ -289,251 +160,203 @@ html,body {
   <div class="home-top">
     <div class="app-eye">Calisthenics</div>
     <div class="app-name">Form<span>.</span></div>
-    <div class="app-sub">Real-time pose detection · Rep counting · Form cues</div>
+    <div class="app-sub">Live feedback · Video review · Rep analysis</div>
   </div>
-
   <div class="exercise-list">
     <div class="ex-item" onclick="startExercise('pullup')">
       <div class="ex-icon pull">💪</div>
-      <div class="ex-info">
-        <div class="ex-name">Pull-Up</div>
-        <div class="ex-cues">Depth · Chest-to-bar · Elbow angle · Kipping check</div>
-      </div>
+      <div class="ex-info"><div class="ex-name">Pull-Up</div><div class="ex-cues">Depth · Chest-to-bar · Elbow angle · Kipping check</div></div>
       <div class="ex-arrow">→</div>
     </div>
-
     <div class="ex-item" onclick="startExercise('pushup')">
       <div class="ex-icon push">🫸</div>
-      <div class="ex-info">
-        <div class="ex-name">Push-Up</div>
-        <div class="ex-cues">Depth · Hip alignment · Lockout · Body line</div>
-      </div>
+      <div class="ex-info"><div class="ex-name">Push-Up</div><div class="ex-cues">Depth · Hip alignment · Lockout · Body line</div></div>
       <div class="ex-arrow">→</div>
     </div>
-
     <div class="ex-item" onclick="startExercise('dip')">
       <div class="ex-icon dip">🔽</div>
-      <div class="ex-info">
-        <div class="ex-name">Dip</div>
-        <div class="ex-cues">Depth · Lean angle · Elbow flare · Lockout</div>
-      </div>
+      <div class="ex-info"><div class="ex-name">Dip</div><div class="ex-cues">Depth · Lean angle · Elbow flare · Lockout</div></div>
       <div class="ex-arrow">→</div>
     </div>
-
     <div class="ex-item" onclick="startExercise('hspu')">
       <div class="ex-icon hspu">🙌</div>
-      <div class="ex-info">
-        <div class="ex-name">Handstand Push-Up</div>
-        <div class="ex-cues">Body line · Head position · Elbow tracking · Lockout</div>
-      </div>
+      <div class="ex-info"><div class="ex-name">Handstand Push-Up</div><div class="ex-cues">Body line · Head position · Elbow tracking · Lockout</div></div>
       <div class="ex-arrow">→</div>
     </div>
   </div>
-
-  <div class="home-tip">
-    <b>Phone placement:</b> See setup instructions after selecting your exercise.
-  </div>
+  <div class="home-tip"><b>Live mode:</b> Front camera faces you. <b>Review mode:</b> Record with back camera, upload here for analysis.</div>
 </div>
 
-<!-- ══ TRACKER VIEW ══ -->
+<!-- ══ TRACKER ══ -->
 <div id="trackerView">
-  <!-- Camera -->
-  <div class="cam-wrap">
-    <video id="video" autoplay playsinline muted></video>
-    <canvas id="poseCanvas"></canvas>
+  <!-- Mode toggle -->
+  <div class="mode-toggle">
+    <div class="mode-tab active" id="tabLive" onclick="switchMode('live')">⚡ Live</div>
+    <div class="mode-tab" id="tabReview" onclick="switchMode('review')">🎬 Review</div>
+  </div>
 
-    <div class="cam-loader" id="camLoader">
+  <div class="cam-wrap">
+    <!-- LIVE -->
+    <video id="liveVideo" autoplay playsinline muted></video>
+    <canvas id="liveCanvas"></canvas>
+
+    <!-- REVIEW -->
+    <canvas id="reviewCanvas"></canvas>
+    <div class="upload-zone" id="uploadZone" onclick="document.getElementById('videoFileInput').click()">
+      <div class="upload-icon">🎬</div>
+      <div class="upload-text">Upload Your Set</div>
+      <div class="upload-sub">Record yourself doing a set with your back camera, then upload here for frame-by-frame analysis.</div>
+      <input type="file" id="videoFileInput" accept="video/*" style="display:none" onchange="loadReviewVideo(event)">
+    </div>
+    <div class="progress-bar" id="progressBar"></div>
+
+    <!-- Loader -->
+    <div class="cam-loader hidden" id="camLoader">
       <div class="loader-ring"></div>
-      <div class="loader-text">LOADING MODEL...</div>
+      <div class="loader-text" id="loaderText">LOADING MODEL...</div>
     </div>
 
-    <!-- HUD top bar -->
+    <!-- HUD -->
     <div class="hud-bar">
-      <div class="hud-back" onclick="stopTracker()">←</div>
+      <div class="hud-back" onclick="goHome()">←</div>
       <div class="hud-ex-name" id="hudExName">Pull-Up</div>
       <div class="hud-rep-badge" id="hudReps">0 reps</div>
     </div>
 
-    <!-- Angle display -->
+    <!-- Angle -->
     <div class="angle-display" id="angleDisplay">
       <div class="angle-val" id="angleVal">--°</div>
       <div class="angle-lbl" id="angleLbl">Elbow</div>
     </div>
 
-    <!-- Form feedback -->
+    <!-- Feedback -->
     <div class="feedback-wrap">
       <div class="feedback-row" id="feedbackChips"></div>
       <div class="main-feedback" id="mainFeedback"></div>
     </div>
+
+    <!-- Review scrubber -->
+    <div class="scrubber-wrap" id="scrubberWrap">
+      <input type="range" id="scrubber" min="0" max="100" value="0" oninput="scrubTo(this.value)">
+      <div class="scrubber-time" id="scrubberTime">0:00</div>
+    </div>
+
+    <!-- Rep timeline dots -->
+    <div class="rep-timeline" id="repTimeline"></div>
   </div>
 
-  <!-- Stats strip -->
+  <!-- Stats -->
   <div class="stats-strip">
-    <div class="stat-cell">
-      <div class="stat-val green" id="statReps">0</div>
-      <div class="stat-lbl">Reps</div>
-    </div>
-    <div class="stat-cell">
-      <div class="stat-val" id="statDepth">--</div>
-      <div class="stat-lbl">Depth</div>
-    </div>
-    <div class="stat-cell">
-      <div class="stat-val" id="statForm">--</div>
-      <div class="stat-lbl">Form</div>
-    </div>
-    <div class="stat-cell">
-      <div class="stat-val amber" id="statBest">0</div>
-      <div class="stat-lbl">Best</div>
-    </div>
+    <div class="stat-cell"><div class="stat-val green" id="statReps">0</div><div class="stat-lbl">Reps</div></div>
+    <div class="stat-cell"><div class="stat-val" id="statDepth">--</div><div class="stat-lbl">Depth</div></div>
+    <div class="stat-cell"><div class="stat-val" id="statForm">--</div><div class="stat-lbl">Form %</div></div>
+    <div class="stat-cell"><div class="stat-val amber" id="statBest">--</div><div class="stat-lbl">Best Angle</div></div>
   </div>
-
-  <!-- Rep history -->
-  <div class="history-strip" id="historyStrip"></div>
 
   <!-- Controls -->
-  <div class="controls">
-    <button class="btn btn-start" id="startBtn" onclick="toggleTracking()">
-      ▶ Start
-    </button>
+  <div class="controls" id="liveControls">
+    <button class="btn btn-start" id="startBtn" onclick="toggleTracking()">▶ Start</button>
     <button class="btn btn-reset" onclick="resetSession()">Reset</button>
+  </div>
+  <div class="controls hidden" id="reviewControls">
+    <button class="btn btn-analyze btn-disabled" id="analyzeBtn" onclick="analyzeVideo()" disabled>▶ Analyze Set</button>
+    <button class="btn btn-reset" onclick="resetReview()">New Video</button>
   </div>
 </div>
 
 <!-- ══ SETUP MODAL ══ -->
-<div id="setupModal" style="
-  display:none; position:fixed; inset:0; background:rgba(0,0,0,0.95);
-  z-index:100; flex-direction:column; padding:0;
-">
-  <div style="padding:56px 28px 20px; border-bottom:1px solid #252525;">
-    <div style="font-size:9px;font-weight:700;letter-spacing:3px;color:#00e676;text-transform:uppercase;margin-bottom:8px;">Setup</div>
-    <div style="font-size:26px;font-weight:900;letter-spacing:-1px;" id="setupTitle">Pull-Up Setup</div>
+<div id="setupModal">
+  <div class="setup-head">
+    <div class="setup-label">Setup</div>
+    <div class="setup-title" id="setupTitle">Pull-Up</div>
   </div>
-  <div style="flex:1;overflow-y:auto;padding:24px 28px;" id="setupBody"></div>
-  <div style="padding:16px 28px 40px;">
-    <button onclick="confirmSetup()" style="
-      width:100%;height:54px;background:#00e676;color:#000;
-      border:none;border-radius:14px;font-size:15px;font-weight:800;
-      cursor:pointer;
-    ">I'm set up — Open Camera</button>
+  <div class="setup-body" id="setupBody"></div>
+  <div class="setup-foot">
+    <button class="setup-btn setup-btn-secondary" onclick="closeSetup()">Cancel</button>
+    <button class="setup-btn setup-btn-primary" onclick="confirmSetup()">Open Camera →</button>
   </div>
+</div>
+
+<!-- ══ REP DETAIL ══ -->
+<div id="repDetail">
+  <div class="rd-title">Rep Analysis</div>
+  <div class="rd-rep" id="rdRep">1</div>
+  <div class="rd-angle" id="rdAngle">Bottom angle: --°</div>
+  <div class="rd-feedback" id="rdFeedback"></div>
+  <button class="rd-close" onclick="document.getElementById('repDetail').classList.remove('show')">Close</button>
 </div>
 
 <script>
 // ══════════════════════════════════════════
-// EXERCISE CONFIGS
+// EXERCISES
 // ══════════════════════════════════════════
 const EXERCISES = {
   pullup: {
-    name: 'Pull-Up',
-    primaryAngle: 'elbow',
-    angleLbl: 'Elbow',
-    // Rep counted when elbow goes from extended (>150°) to flexed (<70°) and back
-    topAngle: 155,    // arms extended = top position
-    bottomAngle: 65,  // arms flexed = bottom (chest to bar)
-    goodDepth: 70,
-    setup: `
-      <div style="margin-bottom:20px;">
-        <div style="font-size:12px;font-weight:700;letter-spacing:2px;color:#00e676;text-transform:uppercase;margin-bottom:10px;">Phone Position</div>
-        <div style="background:#181818;border:1px solid #252525;border-radius:12px;padding:16px;font-size:13px;color:#888;line-height:1.8;">
-          📍 Place phone <b style="color:#f2f2f2;">directly in front of you</b>, at <b style="color:#f2f2f2;">chest height</b> when standing<br>
-          📐 Distance: <b style="color:#f2f2f2;">6–8 feet away</b> so your full body fits in frame<br>
-          🔄 <b style="color:#f2f2f2;">Portrait mode</b> works best — you need vertical space for the full hang<br>
-          💡 Make sure your <b style="color:#f2f2f2;">arms and bar are visible</b> at the top of the rep
-        </div>
-      </div>
-      <div style="margin-bottom:20px;">
-        <div style="font-size:12px;font-weight:700;letter-spacing:2px;color:#00e676;text-transform:uppercase;margin-bottom:10px;">What It Tracks</div>
-        <div style="display:flex;flex-direction:column;gap:8px;">
-          <div style="background:#181818;border-radius:10px;padding:12px 14px;font-size:12px;color:#888;">✅ <b style="color:#f2f2f2;">Elbow angle</b> — full extension at top, depth at bottom</div>
-          <div style="background:#181818;border-radius:10px;padding:12px 14px;font-size:12px;color:#888;">✅ <b style="color:#f2f2f2;">Chest-to-bar</b> — checks if chin/chest reaches the bar</div>
-          <div style="background:#181818;border-radius:10px;padding:12px 14px;font-size:12px;color:#888;">✅ <b style="color:#f2f2f2;">Rep count</b> — auto-counted on full ROM</div>
-          <div style="background:#181818;border-radius:10px;padding:12px 14px;font-size:12px;color:#888;">✅ <b style="color:#f2f2f2;">Kipping detection</b> — flags if hips swing forward</div>
-        </div>
+    name:'Pull-Up', angleLbl:'Elbow',
+    topAngle:150, bottomAngle:65, goodDepth:70,
+    liveSetup:`<div style="margin-bottom:16px">
+      <div style="font-size:11px;font-weight:700;letter-spacing:2px;color:#00e676;margin-bottom:8px">LIVE MODE — FRONT CAMERA</div>
+      <div style="background:#181818;border-radius:12px;padding:14px;font-size:13px;color:#888;line-height:1.9">
+        📍 Prop phone at <b style="color:#f2f2f2">chest height</b> directly in front of your bar<br>
+        📏 <b style="color:#f2f2f2">6–8 feet away</b> — full body must fit in frame<br>
+        🔄 <b style="color:#f2f2f2">Portrait mode</b><br>
+        👀 You can see the screen while hanging — glance at feedback between reps
+      </div></div>
+      <div style="background:#181818;border-radius:12px;padding:14px;font-size:13px;color:#888;line-height:1.9">
+        <b style="color:#f2f2f2">Tracks:</b> Elbow angle · Full depth · Chest-to-bar · Kipping · Rep count
       </div>`,
+    reviewSetup:`<div style="margin-bottom:16px">
+      <div style="font-size:11px;font-weight:700;letter-spacing:2px;color:#ffab00;margin-bottom:8px">REVIEW MODE — BACK CAMERA</div>
+      <div style="background:#181818;border-radius:12px;padding:14px;font-size:13px;color:#888;line-height:1.9">
+        📍 Place phone on a shelf or prop it up <b style="color:#f2f2f2">directly in front</b> of the bar<br>
+        📏 <b style="color:#f2f2f2">6–8 feet away</b>, chest height<br>
+        🎬 Record your full set with the native camera app, then upload here
+      </div></div>`,
     analyze: analyzePullup
   },
   pushup: {
-    name: 'Push-Up',
-    primaryAngle: 'elbow',
-    angleLbl: 'Elbow',
-    topAngle: 160,
-    bottomAngle: 75,
-    goodDepth: 80,
-    setup: `
-      <div style="margin-bottom:20px;">
-        <div style="font-size:12px;font-weight:700;letter-spacing:2px;color:#00e676;text-transform:uppercase;margin-bottom:10px;">Phone Position</div>
-        <div style="background:#181818;border:1px solid #252525;border-radius:12px;padding:16px;font-size:13px;color:#888;line-height:1.8;">
-          📍 Place phone <b style="color:#f2f2f2;">directly to your side</b> (3 or 9 o'clock)<br>
-          📐 <b style="color:#f2f2f2;">Floor level or just above</b> — you want the camera at your torso height<br>
-          📏 Distance: <b style="color:#f2f2f2;">4–6 feet away</b> so your full body fits sideways<br>
-          🔄 <b style="color:#f2f2f2;">Landscape mode</b> — you're horizontal, phone should be too
-        </div>
-      </div>
-      <div style="margin-bottom:20px;">
-        <div style="font-size:12px;font-weight:700;letter-spacing:2px;color:#00e676;text-transform:uppercase;margin-bottom:10px;">What It Tracks</div>
-        <div style="display:flex;flex-direction:column;gap:8px;">
-          <div style="background:#181818;border-radius:10px;padding:12px 14px;font-size:12px;color:#888;">✅ <b style="color:#f2f2f2;">Elbow angle</b> — depth check at bottom</div>
-          <div style="background:#181818;border-radius:10px;padding:12px 14px;font-size:12px;color:#888;">✅ <b style="color:#f2f2f2;">Hip sag</b> — detects if hips drop below body line</div>
-          <div style="background:#181818;border-radius:10px;padding:12px 14px;font-size:12px;color:#888;">✅ <b style="color:#f2f2f2;">Lockout</b> — full arm extension at top</div>
-          <div style="background:#181818;border-radius:10px;padding:12px 14px;font-size:12px;color:#888;">✅ <b style="color:#f2f2f2;">Rep count</b> — counted on full ROM</div>
-        </div>
-      </div>`,
+    name:'Push-Up', angleLbl:'Elbow',
+    topAngle:160, bottomAngle:75, goodDepth:80,
+    liveSetup:`<div style="margin-bottom:16px">
+      <div style="font-size:11px;font-weight:700;letter-spacing:2px;color:#00e676;margin-bottom:8px">LIVE MODE — FRONT CAMERA</div>
+      <div style="background:#181818;border-radius:12px;padding:14px;font-size:13px;color:#888;line-height:1.9">
+        📍 Prop phone <b style="color:#f2f2f2">to your side</b> at floor level<br>
+        📏 <b style="color:#f2f2f2">4–5 feet away</b>, full body side view<br>
+        🔄 <b style="color:#f2f2f2">Landscape mode</b>
+      </div></div>`,
+    reviewSetup:`<div style="margin-bottom:16px">
+      <div style="font-size:11px;font-weight:700;letter-spacing:2px;color:#ffab00;margin-bottom:8px">REVIEW MODE — BACK CAMERA</div>
+      <div style="background:#181818;border-radius:12px;padding:14px;font-size:13px;color:#888;line-height:1.9">
+        📍 Prop phone to your side at floor level, back camera facing you<br>
+        🔄 <b style="color:#f2f2f2">Landscape mode</b>
+      </div></div>`,
     analyze: analyzePushup
   },
   dip: {
-    name: 'Dip',
-    primaryAngle: 'elbow',
-    angleLbl: 'Elbow',
-    topAngle: 160,
-    bottomAngle: 75,
-    goodDepth: 80,
-    setup: `
-      <div style="margin-bottom:20px;">
-        <div style="font-size:12px;font-weight:700;letter-spacing:2px;color:#00e676;text-transform:uppercase;margin-bottom:10px;">Phone Position</div>
-        <div style="background:#181818;border:1px solid #252525;border-radius:12px;padding:16px;font-size:13px;color:#888;line-height:1.8;">
-          📍 Place phone <b style="color:#f2f2f2;">directly in front of you</b> at the bars<br>
-          📐 <b style="color:#f2f2f2;">Chest height when standing</b> upright<br>
-          📏 Distance: <b style="color:#f2f2f2;">5–7 feet away</b> so your full body fits<br>
-          🔄 <b style="color:#f2f2f2;">Portrait mode</b> to capture full dip depth
-        </div>
-      </div>
-      <div style="margin-bottom:20px;">
-        <div style="font-size:12px;font-weight:700;letter-spacing:2px;color:#00e676;text-transform:uppercase;margin-bottom:10px;">What It Tracks</div>
-        <div style="display:flex;flex-direction:column;gap:8px;">
-          <div style="background:#181818;border-radius:10px;padding:12px 14px;font-size:12px;color:#888;">✅ <b style="color:#f2f2f2;">Elbow angle</b> — depth at bottom position</div>
-          <div style="background:#181818;border-radius:10px;padding:12px 14px;font-size:12px;color:#888;">✅ <b style="color:#f2f2f2;">Forward lean</b> — chest vs tricep dip angle</div>
-          <div style="background:#181818;border-radius:10px;padding:12px 14px;font-size:12px;color:#888;">✅ <b style="color:#f2f2f2;">Lockout</b> — full extension at top</div>
-          <div style="background:#181818;border-radius:10px;padding:12px 14px;font-size:12px;color:#888;">✅ <b style="color:#f2f2f2;">Rep count</b> — auto on full ROM</div>
-        </div>
-      </div>`,
+    name:'Dip', angleLbl:'Elbow',
+    topAngle:160, bottomAngle:75, goodDepth:80,
+    liveSetup:`<div style="background:#181818;border-radius:12px;padding:14px;font-size:13px;color:#888;line-height:1.9">
+      📍 Prop phone <b style="color:#f2f2f2">directly in front</b> of the bars at chest height<br>
+      📏 <b style="color:#f2f2f2">5–7 feet away</b><br>
+      🔄 <b style="color:#f2f2f2">Portrait mode</b>
+    </div>`,
+    reviewSetup:`<div style="background:#181818;border-radius:12px;padding:14px;font-size:13px;color:#888;line-height:1.9">
+      📍 Record from the front, chest height, 5–7 feet away
+    </div>`,
     analyze: analyzeDip
   },
   hspu: {
-    name: 'Handstand Push-Up',
-    primaryAngle: 'elbow',
-    angleLbl: 'Elbow',
-    topAngle: 160,
-    bottomAngle: 70,
-    goodDepth: 75,
-    setup: `
-      <div style="margin-bottom:20px;">
-        <div style="font-size:12px;font-weight:700;letter-spacing:2px;color:#00e676;text-transform:uppercase;margin-bottom:10px;">Phone Position</div>
-        <div style="background:#181818;border:1px solid #252525;border-radius:12px;padding:16px;font-size:13px;color:#888;line-height:1.8;">
-          📍 Place phone <b style="color:#f2f2f2;">to your side</b>, perpendicular to the wall<br>
-          📐 <b style="color:#f2f2f2;">About 3 feet off the ground</b> — mid-height of your inverted body<br>
-          📏 Distance: <b style="color:#f2f2f2;">5–7 feet away</b><br>
-          🔄 <b style="color:#f2f2f2;">Landscape mode</b> works best for side view
-        </div>
-      </div>
-      <div style="margin-bottom:20px;">
-        <div style="font-size:12px;font-weight:700;letter-spacing:2px;color:#00e676;text-transform:uppercase;margin-bottom:10px;">What It Tracks</div>
-        <div style="display:flex;flex-direction:column;gap:8px;">
-          <div style="background:#181818;border-radius:10px;padding:12px 14px;font-size:12px;color:#888;">✅ <b style="color:#f2f2f2;">Elbow angle</b> — depth at bottom</div>
-          <div style="background:#181818;border-radius:10px;padding:12px 14px;font-size:12px;color:#888;">✅ <b style="color:#f2f2f2;">Body line</b> — hip alignment over shoulders</div>
-          <div style="background:#181818;border-radius:10px;padding:12px 14px;font-size:12px;color:#888;">✅ <b style="color:#f2f2f2;">Lockout</b> — full extension at top</div>
-          <div style="background:#181818;border-radius:10px;padding:12px 14px;font-size:12px;color:#888;">✅ <b style="color:#f2f2f2;">Rep count</b> — full ROM only</div>
-        </div>
-      </div>`,
+    name:'Handstand Push-Up', angleLbl:'Elbow',
+    topAngle:160, bottomAngle:70, goodDepth:75,
+    liveSetup:`<div style="background:#181818;border-radius:12px;padding:14px;font-size:13px;color:#888;line-height:1.9">
+      📍 Prop phone <b style="color:#f2f2f2">to your side</b>, perpendicular to wall<br>
+      📐 <b style="color:#f2f2f2">~3 feet off ground</b><br>
+      📏 <b style="color:#f2f2f2">5–7 feet away</b><br>
+      🔄 <b style="color:#f2f2f2">Landscape mode</b>
+    </div>`,
+    reviewSetup:`<div style="background:#181818;border-radius:12px;padding:14px;font-size:13px;color:#888;line-height:1.9">
+      📍 Record from side, ~3 feet off ground, 5–7 feet away
+    </div>`,
     analyze: analyzeHSPU
   }
 };
@@ -542,44 +365,53 @@ const EXERCISES = {
 // STATE
 // ══════════════════════════════════════════
 let currentExercise = null;
+let currentMode = 'live'; // 'live' or 'review'
 let detector = null;
 let stream = null;
 let tracking = false;
 let animFrame = null;
-
 let repCount = 0;
-let bestReps = 0;
-let repState = 'top';   // 'top' or 'bottom'
-let repHistory = [];    // array of {angle, feedback}
-let formScores = [];    // 0–100 per rep
+let bestAngle = null;
+let repState = 'top';
+let repLog = []; // {num, angle, chips, formScore, timestamp}
+let formScores = [];
+let reviewVideoEl = null;
+let reviewFrames = []; // analyzed frames
+let modelLoaded = false;
 
 // ══════════════════════════════════════════
 // NAVIGATION
 // ══════════════════════════════════════════
 function startExercise(key) {
   currentExercise = EXERCISES[key];
-  showSetup(key);
+  showSetup();
 }
 
-function showSetup(key) {
-  const ex = EXERCISES[key];
-  document.getElementById('setupTitle').textContent = ex.name + ' Setup';
-  document.getElementById('setupBody').innerHTML = ex.setup;
-  const modal = document.getElementById('setupModal');
-  modal.style.display = 'flex';
+function showSetup() {
+  const ex = currentExercise;
+  document.getElementById('setupTitle').textContent = ex.name;
+  document.getElementById('setupBody').innerHTML = `
+    <div style="margin-bottom:20px">${ex.liveSetup}</div>
+    <div style="margin-top:20px">${ex.reviewSetup}</div>`;
+  document.getElementById('setupModal').style.display = 'flex';
+}
+
+function closeSetup() {
+  document.getElementById('setupModal').style.display = 'none';
 }
 
 async function confirmSetup() {
-  document.getElementById('setupModal').style.display = 'none';
+  closeSetup();
   document.getElementById('home').style.display = 'none';
   document.getElementById('trackerView').classList.add('active');
   document.getElementById('hudExName').textContent = currentExercise.name;
   document.getElementById('angleLbl').textContent = currentExercise.angleLbl;
-  await initCamera();
+  switchMode('live');
+  await initLiveCamera();
   await loadModel();
 }
 
-function stopTracker() {
+function goHome() {
   stopTracking();
   if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
   document.getElementById('trackerView').classList.remove('active');
@@ -588,65 +420,97 @@ function stopTracker() {
 }
 
 // ══════════════════════════════════════════
-// CAMERA + MODEL
+// MODE SWITCHING
 // ══════════════════════════════════════════
-async function initCamera() {
+function switchMode(mode) {
+  currentMode = mode;
+  document.getElementById('tabLive').className = 'mode-tab' + (mode==='live'?' active':'');
+  document.getElementById('tabReview').className = 'mode-tab' + (mode==='review'?' active':'');
+
+  const liveVideo = document.getElementById('liveVideo');
+  const liveCanvas = document.getElementById('liveCanvas');
+  const reviewCanvas = document.getElementById('reviewCanvas');
+  const uploadZone = document.getElementById('uploadZone');
+
+  if (mode === 'live') {
+    liveVideo.style.display = 'block';
+    liveCanvas.style.display = 'block';
+    reviewCanvas.style.display = 'none';
+    uploadZone.style.display = 'none';
+    document.getElementById('liveControls').classList.remove('hidden');
+    document.getElementById('reviewControls').classList.add('hidden');
+    document.getElementById('scrubberWrap').classList.remove('show');
+    document.getElementById('repTimeline').innerHTML = '';
+    if (stream) { liveVideo.srcObject = stream; }
+  } else {
+    liveVideo.style.display = 'none';
+    liveCanvas.style.display = 'none';
+    stopTracking();
+    document.getElementById('liveControls').classList.add('hidden');
+    document.getElementById('reviewControls').classList.remove('hidden');
+    if (!reviewVideoEl) {
+      uploadZone.style.display = 'flex';
+      reviewCanvas.style.display = 'none';
+    } else {
+      uploadZone.style.display = 'none';
+      reviewCanvas.style.display = 'block';
+    }
+  }
+}
+
+// ══════════════════════════════════════════
+// LIVE CAMERA + MODEL
+// ══════════════════════════════════════════
+async function initLiveCamera() {
   try {
     stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: { ideal: 'environment' }, width:{ideal:1280}, height:{ideal:720} },
+      video: { facingMode: 'user', width:{ideal:640}, height:{ideal:480} },
       audio: false
     });
-    const vid = document.getElementById('video');
+    const vid = document.getElementById('liveVideo');
     vid.srcObject = stream;
     await vid.play();
-    const canvas = document.getElementById('poseCanvas');
+    const canvas = document.getElementById('liveCanvas');
     canvas.width = vid.videoWidth || 640;
     canvas.height = vid.videoHeight || 480;
   } catch(e) {
-    alert('Camera access needed. Please allow camera permission and try again.');
+    alert('Camera access needed. Please allow camera permission.');
   }
 }
 
 async function loadModel() {
   document.getElementById('camLoader').classList.remove('hidden');
+  document.getElementById('loaderText').textContent = 'LOADING MODEL...';
   try {
     await tf.setBackend('webgl');
     await tf.ready();
-    // MoveNet Lightning — fastest, most reliable on mobile
     detector = await poseDetection.createDetector(
       poseDetection.SupportedModels.MoveNet,
-      {
-        modelType: poseDetection.movenet.modelType.SINGLEPOSE_LIGHTNING,
-        enableSmoothing: true
-      }
+      { modelType: poseDetection.movenet.modelType.SINGLEPOSE_LIGHTNING, enableSmoothing: true }
     );
+    modelLoaded = true;
     document.getElementById('camLoader').classList.add('hidden');
-    document.getElementById('mainFeedback').textContent = 'Model ready — tap Start when set';
+    document.getElementById('mainFeedback').textContent = 'Ready — tap Start and step into frame';
   } catch(e) {
-    console.error('Model load error:', e);
     document.getElementById('camLoader').classList.add('hidden');
-    document.getElementById('mainFeedback').textContent = 'Tap to retry loading model';
+    document.getElementById('mainFeedback').textContent = 'Tap here to retry loading model';
     document.getElementById('mainFeedback').style.cursor = 'pointer';
     document.getElementById('mainFeedback').onclick = () => {
       document.getElementById('mainFeedback').onclick = null;
-      document.getElementById('mainFeedback').textContent = '';
       loadModel();
     };
   }
 }
 
 // ══════════════════════════════════════════
-// TRACKING LOOP
+// LIVE TRACKING
 // ══════════════════════════════════════════
 function toggleTracking() {
   tracking ? stopTracking() : startTracking();
 }
 
 function startTracking() {
-  if (!detector) {
-    document.getElementById('mainFeedback').textContent = 'Model still loading — wait a moment';
-    return;
-  }
+  if (!modelLoaded) { document.getElementById('mainFeedback').textContent = 'Model still loading — wait a moment'; return; }
   tracking = true;
   document.getElementById('startBtn').innerHTML = '<span class="rec-dot"></span> Tracking';
   document.getElementById('startBtn').className = 'btn btn-stop';
@@ -663,43 +527,180 @@ function stopTracking() {
 
 async function poseLoop() {
   if (!tracking || !detector) return;
-  const vid = document.getElementById('video');
+  const vid = document.getElementById('liveVideo');
+  if (vid.readyState < 3 || vid.videoWidth === 0) { animFrame = requestAnimationFrame(poseLoop); return; }
 
-  // Wait until video has enough data
-  if (vid.readyState < 3 || vid.videoWidth === 0) {
-    animFrame = requestAnimationFrame(poseLoop);
-    return;
-  }
-
-  // Sync canvas size to video
-  const canvas = document.getElementById('poseCanvas');
-  if (canvas.width !== vid.videoWidth) {
-    canvas.width = vid.videoWidth;
-    canvas.height = vid.videoHeight;
-  }
+  const canvas = document.getElementById('liveCanvas');
+  if (canvas.width !== vid.videoWidth) { canvas.width = vid.videoWidth; canvas.height = vid.videoHeight; }
 
   try {
-    const poses = await detector.estimatePoses(vid, { flipHorizontal: false });
+    const poses = await detector.estimatePoses(vid, { flipHorizontal: true });
     if (poses && poses.length > 0) {
-      drawPose(poses[0]);
+      drawSkeleton(poses[0], canvas, true);
       const result = currentExercise.analyze(poses[0].keypoints);
-      if (result) updateUI(result);
+      if (result) updateLiveUI(result);
     } else {
-      // No person detected — show hint
-      document.getElementById('mainFeedback').textContent = 'Step into frame…';
+      document.getElementById('mainFeedback').textContent = 'Step closer — can\'t see you clearly';
+      document.getElementById('feedbackChips').innerHTML = '';
     }
-  } catch(e) {
-    console.error('Pose error:', e);
-    // Don't crash loop on single frame error
-  }
-
-  if (tracking) {
-    animFrame = requestAnimationFrame(poseLoop);
-  }
+  } catch(e) { console.error(e); }
+  if (tracking) animFrame = requestAnimationFrame(poseLoop);
 }
 
 // ══════════════════════════════════════════
-// DRAWING
+// REVIEW MODE
+// ══════════════════════════════════════════
+function loadReviewVideo(event) {
+  const file = event.target.files[0]; if (!file) return;
+  reviewVideoEl = document.createElement('video');
+  reviewVideoEl.src = URL.createObjectURL(file);
+  reviewVideoEl.preload = 'auto';
+  reviewVideoEl.addEventListener('loadeddata', () => {
+    document.getElementById('uploadZone').style.display = 'none';
+    const canvas = document.getElementById('reviewCanvas');
+    canvas.style.display = 'block';
+    canvas.width = reviewVideoEl.videoWidth;
+    canvas.height = reviewVideoEl.videoHeight;
+    // Draw first frame
+    reviewVideoEl.currentTime = 0;
+    reviewVideoEl.addEventListener('seeked', function ff() {
+      canvas.getContext('2d').drawImage(reviewVideoEl, 0, 0, canvas.width, canvas.height);
+      reviewVideoEl.removeEventListener('seeked', ff);
+    });
+    document.getElementById('scrubber').max = reviewVideoEl.duration;
+    document.getElementById('analyzeBtn').disabled = false;
+    document.getElementById('analyzeBtn').className = 'btn btn-analyze';
+    document.getElementById('mainFeedback').textContent = 'Video loaded — tap Analyze Set';
+  });
+}
+
+async function analyzeVideo() {
+  if (!reviewVideoEl || !modelLoaded) return;
+  document.getElementById('analyzeBtn').disabled = true;
+  document.getElementById('analyzeBtn').textContent = 'Analyzing...';
+  document.getElementById('camLoader').classList.remove('hidden');
+  document.getElementById('loaderText').textContent = 'ANALYZING...';
+  document.getElementById('progressBar').style.width = '0%';
+
+  const canvas = document.getElementById('reviewCanvas');
+  const ctx = canvas.getContext('2d');
+  const duration = reviewVideoEl.duration;
+  const fps = 15;
+  const totalFrames = Math.floor(duration * fps);
+  const interval = 1 / fps;
+
+  reviewFrames = [];
+  repCount = 0; repState = 'top'; repLog = []; formScores = []; bestAngle = null;
+
+  for (let i = 0; i < totalFrames; i++) {
+    await seekTo(reviewVideoEl, i * interval);
+    ctx.drawImage(reviewVideoEl, 0, 0, canvas.width, canvas.height);
+
+    try {
+      const poses = await detector.estimatePoses(canvas, { flipHorizontal: false });
+      let frameResult = null;
+      if (poses && poses.length > 0) {
+        drawSkeleton(poses[0], canvas, false);
+        frameResult = currentExercise.analyze(poses[0].keypoints);
+        if (frameResult) {
+          updateLiveUI(frameResult);
+          frameResult.time = i * interval;
+        }
+      }
+      reviewFrames.push(frameResult);
+    } catch(e) { reviewFrames.push(null); }
+
+    document.getElementById('progressBar').style.width = `${((i+1)/totalFrames)*100}%`;
+    await new Promise(r => setTimeout(r, 5));
+  }
+
+  document.getElementById('camLoader').classList.add('hidden');
+  document.getElementById('progressBar').style.width = '0%';
+  document.getElementById('scrubberWrap').classList.add('show');
+  document.getElementById('analyzeBtn').textContent = '✓ Analyzed';
+
+  renderRepTimeline();
+  renderFinalStats();
+  document.getElementById('mainFeedback').textContent = `${repCount} reps detected — tap dots to review each`;
+}
+
+function seekTo(video, time) {
+  return new Promise(resolve => { video.currentTime = time; video.addEventListener('seeked', resolve, {once:true}); });
+}
+
+function scrubTo(val) {
+  if (!reviewVideoEl) return;
+  const time = parseFloat(val);
+  const mins = Math.floor(time/60);
+  const secs = Math.floor(time%60).toString().padStart(2,'0');
+  document.getElementById('scrubberTime').textContent = `${mins}:${secs}`;
+
+  const frameIdx = Math.floor(time * 15);
+  const frame = reviewFrames[frameIdx];
+  if (frame) updateLiveUI(frame);
+
+  const canvas = document.getElementById('reviewCanvas');
+  const ctx = canvas.getContext('2d');
+  reviewVideoEl.currentTime = time;
+  reviewVideoEl.addEventListener('seeked', function draw() {
+    ctx.drawImage(reviewVideoEl, 0, 0, canvas.width, canvas.height);
+    reviewVideoEl.removeEventListener('seeked', draw);
+  }, {once:true});
+}
+
+function renderRepTimeline() {
+  const tl = document.getElementById('repTimeline');
+  tl.innerHTML = repLog.map((rep, i) => {
+    const cls = rep.formScore >= 85 ? 'good-rep' : rep.formScore >= 65 ? 'warn-rep' : 'bad-rep';
+    return `<div class="rep-dot ${cls}" onclick="showRepDetail(${i})">${rep.num}</div>`;
+  }).join('');
+}
+
+function showRepDetail(idx) {
+  const rep = repLog[idx];
+  if (!rep) return;
+  document.getElementById('rdRep').textContent = `Rep ${rep.num}`;
+  document.getElementById('rdAngle').textContent = `Bottom elbow angle: ${rep.angle}°`;
+  document.getElementById('rdFeedback').innerHTML = rep.chips.map(c => `
+    <div class="rd-chip feedback-chip show ${c.type}" style="opacity:1;transform:none">
+      <div class="chip-dot"></div>${c.text}
+    </div>`).join('');
+  document.getElementById('repDetail').classList.add('show');
+  // Scrub to this rep's timestamp
+  if (rep.timestamp && reviewVideoEl) {
+    document.getElementById('scrubber').value = rep.timestamp;
+    scrubTo(rep.timestamp);
+  }
+}
+
+function renderFinalStats() {
+  document.getElementById('statReps').textContent = repCount;
+  if (bestAngle !== null) document.getElementById('statBest').textContent = bestAngle + '°';
+  const avgForm = formScores.length > 0 ? Math.round(formScores.reduce((a,b)=>a+b,0)/formScores.length) : null;
+  if (avgForm !== null) {
+    const el = document.getElementById('statForm');
+    el.textContent = avgForm + '%';
+    el.className = 'stat-val ' + (avgForm>=85?'green':avgForm>=65?'amber':'red');
+  }
+}
+
+function resetReview() {
+  reviewVideoEl = null;
+  reviewFrames = [];
+  document.getElementById('videoFileInput').value = '';
+  document.getElementById('uploadZone').style.display = 'flex';
+  document.getElementById('reviewCanvas').style.display = 'none';
+  document.getElementById('scrubberWrap').classList.remove('show');
+  document.getElementById('repTimeline').innerHTML = '';
+  document.getElementById('analyzeBtn').disabled = true;
+  document.getElementById('analyzeBtn').className = 'btn btn-analyze btn-disabled';
+  document.getElementById('analyzeBtn').textContent = '▶ Analyze Set';
+  document.getElementById('mainFeedback').textContent = '';
+  resetSession();
+}
+
+// ══════════════════════════════════════════
+// SKELETON DRAWING
 // ══════════════════════════════════════════
 const CONNECTIONS = [
   ['left_shoulder','right_shoulder'],
@@ -711,357 +712,235 @@ const CONNECTIONS = [
   ['right_hip','right_knee'],['right_knee','right_ankle']
 ];
 
-function drawPose(pose) {
-  const canvas = document.getElementById('poseCanvas');
+function drawSkeleton(pose, canvas, clearFirst) {
   const ctx = canvas.getContext('2d');
-  const vid = document.getElementById('video');
-  if (canvas.width !== vid.videoWidth) {
-    canvas.width = vid.videoWidth; canvas.height = vid.videoHeight;
-  }
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-
+  if (clearFirst) ctx.clearRect(0, 0, canvas.width, canvas.height);
   const kpMap = {};
   pose.keypoints.forEach(kp => { kpMap[kp.name] = kp; });
 
-  // Draw skeleton connections
-  ctx.strokeStyle = 'rgba(0,230,118,0.6)';
-  ctx.lineWidth = 2;
-  CONNECTIONS.forEach(([a, b]) => {
-    const kpA = kpMap[a], kpB = kpMap[b];
-    if (kpA && kpB && kpA.score > 0.3 && kpB.score > 0.3) {
-      ctx.beginPath();
-      ctx.moveTo(kpA.x, kpA.y);
-      ctx.lineTo(kpB.x, kpB.y);
-      ctx.stroke();
+  ctx.strokeStyle = 'rgba(0,230,118,0.7)'; ctx.lineWidth = 2.5;
+  CONNECTIONS.forEach(([a,b]) => {
+    const A = kpMap[a], B = kpMap[b];
+    if (A && B && A.score > 0.25 && B.score > 0.25) {
+      ctx.beginPath(); ctx.moveTo(A.x,A.y); ctx.lineTo(B.x,B.y); ctx.stroke();
     }
   });
 
-  // Draw keypoints
   pose.keypoints.forEach(kp => {
-    if (kp.score > 0.3) {
-      ctx.fillStyle = kp.score > 0.6 ? '#00e676' : 'rgba(0,230,118,0.4)';
-      ctx.beginPath();
-      ctx.arc(kp.x, kp.y, 4, 0, Math.PI * 2);
-      ctx.fill();
+    if (kp.score > 0.25) {
+      ctx.fillStyle = kp.score > 0.6 ? '#00e676' : 'rgba(0,230,118,0.45)';
+      ctx.beginPath(); ctx.arc(kp.x, kp.y, 5, 0, Math.PI*2); ctx.fill();
     }
   });
 }
 
 // ══════════════════════════════════════════
-// GEOMETRY HELPERS
+// GEOMETRY
 // ══════════════════════════════════════════
 function getAngle(a, b, c) {
-  // Angle at point b, between points a-b-c
-  const ab = { x: a.x - b.x, y: a.y - b.y };
-  const cb = { x: c.x - b.x, y: c.y - b.y };
+  const ab = {x:a.x-b.x, y:a.y-b.y}, cb = {x:c.x-b.x, y:c.y-b.y};
   const dot = ab.x*cb.x + ab.y*cb.y;
-  const mag = Math.sqrt((ab.x**2+ab.y**2)) * Math.sqrt((cb.x**2+cb.y**2));
-  if (mag === 0) return 0;
-  return Math.round(Math.acos(Math.min(1, Math.max(-1, dot/mag))) * 180 / Math.PI);
+  const mag = Math.sqrt(ab.x**2+ab.y**2) * Math.sqrt(cb.x**2+cb.y**2);
+  if (mag===0) return 0;
+  return Math.round(Math.acos(Math.min(1,Math.max(-1,dot/mag)))*180/Math.PI);
 }
-
-function kp(keypoints, name) {
-  return keypoints.find(k => k.name === name);
-}
-
-function visible(k, threshold = 0.3) {
-  return k && k.score > threshold;
-}
+function kp(keypoints, name) { return keypoints.find(k=>k.name===name); }
+function vis(k, t=0.25) { return k && k.score > t; }
 
 // ══════════════════════════════════════════
 // EXERCISE ANALYZERS
 // ══════════════════════════════════════════
-
-// ── PULL-UP ──
 function analyzePullup(keypoints) {
-  const ls = kp(keypoints,'left_shoulder'), rs = kp(keypoints,'right_shoulder');
-  const le = kp(keypoints,'left_elbow'),   re = kp(keypoints,'right_elbow');
-  const lw = kp(keypoints,'left_wrist'),   rw = kp(keypoints,'right_wrist');
-  const lh = kp(keypoints,'left_hip'),     rh = kp(keypoints,'right_hip');
-
-  if (!visible(ls)||!visible(le)||!visible(lw)) return null;
-
-  const leftElbow  = getAngle(ls, le, lw);
-  const rightElbow = visible(rs)&&visible(re)&&visible(rw) ? getAngle(rs, re, rw) : leftElbow;
-  const elbowAngle = Math.round((leftElbow + rightElbow) / 2);
-
-  // Rep detection
+  const ls=kp(keypoints,'left_shoulder'), rs=kp(keypoints,'right_shoulder');
+  const le=kp(keypoints,'left_elbow'),   re=kp(keypoints,'right_elbow');
+  const lw=kp(keypoints,'left_wrist'),   rw=kp(keypoints,'right_wrist');
+  const lh=kp(keypoints,'left_hip'),     rh=kp(keypoints,'right_hip');
+  if (!vis(ls)||!vis(le)||!vis(lw)) return null;
+  const leftA = getAngle(ls,le,lw);
+  const rightA = vis(rs)&&vis(re)&&vis(rw) ? getAngle(rs,re,rw) : leftA;
+  const angle = Math.round((leftA+rightA)/2);
   const ex = EXERCISES.pullup;
-  if (repState === 'top' && elbowAngle < ex.bottomAngle) {
-    repState = 'bottom';
-  } else if (repState === 'bottom' && elbowAngle > ex.topAngle - 20) {
+
+  // Rep counting
+  if (repState==='top' && angle < ex.bottomAngle+10) repState = 'bottom';
+  else if (repState==='bottom' && angle > ex.topAngle-20) {
     repState = 'top';
-    countRep(elbowAngle);
+    const score = angle < ex.goodDepth ? 100 : angle < ex.goodDepth+25 ? 75 : 55;
+    const chips = buildPullupChips(angle, keypoints);
+    repCount++;
+    if (bestAngle===null || angle < bestAngle) bestAngle = angle;
+    formScores.push(score);
+    repLog.push({num:repCount, angle, chips, formScore:score, timestamp: reviewVideoEl ? parseFloat(document.getElementById('scrubber').value||0) : null});
+    updateRepDisplay();
   }
 
-  // Feedback
-  const chips = [];
+  const chips = buildPullupChips(angle, keypoints);
   let main = '';
-  let formScore = 100;
+  if (angle > 150) main = 'Full hang — initiate pull';
+  else if (angle < ex.goodDepth) main = 'Great depth — drive elbows down to hips';
+  else if (angle < 100) main = 'Almost there — pull until elbows pass 90°';
+  else main = 'Pulling…';
 
-  if (elbowAngle > 150) {
-    chips.push({text:'Full hang', type:'good'});
-    main = 'Good start position — pull!';
-  } else if (elbowAngle < ex.goodDepth) {
-    chips.push({text:'Full depth ✓', type:'good'});
-    main = 'Great depth — drive elbows down';
-  } else if (elbowAngle < 110) {
-    chips.push({text:'Almost there', type:'warn'});
-    main = 'Go deeper — aim for chest to bar';
-    formScore -= 20;
-  }
-
-  // Kipping check — hip movement
-  if (visible(lh) && visible(rh) && visible(ls) && visible(rs)) {
-    const hipShoulderX = Math.abs(((lh.x+rh.x)/2) - ((ls.x+rs.x)/2));
-    if (hipShoulderX > 40) {
-      chips.push({text:'Kipping detected', type:'warn'});
-      main = 'Keep hips still — strict rep';
-      formScore -= 30;
-    }
-  }
-
-  if (elbowAngle > 140) {
-    chips.push({text:'Extend fully', type:'warn'});
-    formScore -= 15;
-  }
-
-  return { angle: elbowAngle, chips, main, formScore,
-    depth: elbowAngle < ex.goodDepth ? '✓' : `${elbowAngle}°` };
+  const formScore = angle < ex.goodDepth ? 100 : 70;
+  return { angle, chips, main, formScore, depth: angle < ex.goodDepth ? '✓' : angle+'°' };
 }
 
-// ── PUSH-UP ──
+function buildPullupChips(angle, keypoints) {
+  const chips = [];
+  const ex = EXERCISES.pullup;
+  if (angle > 150) chips.push({text:'Arms extended ✓', type:'good'});
+  if (angle < ex.goodDepth) chips.push({text:'Full depth ✓', type:'good'});
+  else if (angle < ex.goodDepth+25 && angle < 110) chips.push({text:'Almost full depth', type:'warn'});
+  // Kipping check
+  const ls=kp(keypoints,'left_shoulder'), lh=kp(keypoints,'left_hip'), rh=kp(keypoints,'right_hip');
+  if (vis(ls)&&vis(lh)&&vis(rh)) {
+    const hipX = (lh.x+(rh?rh.x:lh.x))/2;
+    if (Math.abs(hipX - ls.x) > 45) chips.push({text:'Kipping — keep hips still', type:'warn'});
+    else chips.push({text:'Strict ✓', type:'good'});
+  }
+  return chips;
+}
+
 function analyzePushup(keypoints) {
-  const ls = kp(keypoints,'left_shoulder'), rs = kp(keypoints,'right_shoulder');
-  const le = kp(keypoints,'left_elbow'),   re = kp(keypoints,'right_elbow');
-  const lw = kp(keypoints,'left_wrist'),   rw = kp(keypoints,'right_wrist');
-  const lh = kp(keypoints,'left_hip'),     rh = kp(keypoints,'right_hip');
-  const lk = kp(keypoints,'left_knee');
-
-  if (!visible(ls)||!visible(le)||!visible(lw)) return null;
-
-  const leftElbow  = getAngle(ls, le, lw);
-  const rightElbow = visible(rs)&&visible(re)&&visible(rw) ? getAngle(rs, re, rw) : leftElbow;
-  const elbowAngle = Math.round((leftElbow + rightElbow) / 2);
-
+  const ls=kp(keypoints,'left_shoulder'), rs=kp(keypoints,'right_shoulder');
+  const le=kp(keypoints,'left_elbow'),   re=kp(keypoints,'right_elbow');
+  const lw=kp(keypoints,'left_wrist'),   rw=kp(keypoints,'right_wrist');
+  const lh=kp(keypoints,'left_hip'),     lk=kp(keypoints,'left_knee');
+  if (!vis(ls)||!vis(le)||!vis(lw)) return null;
+  const leftA = getAngle(ls,le,lw);
+  const rightA = vis(rs)&&vis(re)&&vis(rw) ? getAngle(rs,re,rw) : leftA;
+  const angle = Math.round((leftA+rightA)/2);
   const ex = EXERCISES.pushup;
-  if (repState === 'top' && elbowAngle < ex.bottomAngle) repState = 'bottom';
-  else if (repState === 'bottom' && elbowAngle > ex.topAngle - 15) { repState = 'top'; countRep(elbowAngle); }
 
-  const chips = [];
-  let main = '';
-  let formScore = 100;
-
-  // Hip sag check
-  if (visible(ls) && visible(lh) && visible(lk)) {
-    const shoulderY = ls.y;
-    const hipY = lh.y;
-    const kneeY = lk.y;
-    const bodyLine = shoulderY + (kneeY - shoulderY) * 0.5;
-    if (hipY > bodyLine + 25) {
-      chips.push({text:'Hip sag', type:'bad'});
-      main = 'Brace your core — hips too low';
-      formScore -= 35;
-    } else if (hipY < bodyLine - 25) {
-      chips.push({text:'Hips high', type:'warn'});
-      main = 'Lower hips — maintain plank';
-      formScore -= 20;
-    } else {
-      chips.push({text:'Good body line', type:'good'});
-    }
+  if (repState==='top' && angle < ex.bottomAngle+10) repState = 'bottom';
+  else if (repState==='bottom' && angle > ex.topAngle-15) {
+    repState = 'top';
+    const chips = buildPushupChips(angle, keypoints);
+    const score = angle < ex.goodDepth ? 100 : 70;
+    repCount++; formScores.push(score);
+    if (bestAngle===null || angle < bestAngle) bestAngle = angle;
+    repLog.push({num:repCount, angle, chips, formScore:score});
+    updateRepDisplay();
   }
 
-  if (elbowAngle < ex.goodDepth) {
-    chips.push({text:'Full depth ✓', type:'good'});
-    if (!main) main = 'Good depth — push up strong';
-  } else if (elbowAngle < 110 && repState === 'bottom') {
-    chips.push({text:'Go deeper', type:'warn'});
-    if (!main) main = 'Lower chest to floor';
-    formScore -= 20;
-  }
-
-  if (elbowAngle > 155) {
-    chips.push({text:'Locked out ✓', type:'good'});
-    if (!main) main = 'Good lockout — lower with control';
-  }
-
-  return { angle: elbowAngle, chips, main, formScore,
-    depth: elbowAngle < ex.goodDepth ? '✓' : `${elbowAngle}°` };
+  const chips = buildPushupChips(angle, keypoints);
+  let main = angle < ex.goodDepth ? 'Good depth — push up strong' : angle > 155 ? 'Good lockout — lower with control' : 'Lowering…';
+  return { angle, chips, main, formScore: angle<ex.goodDepth?100:70, depth: angle<ex.goodDepth?'✓':angle+'°' };
 }
 
-// ── DIP ──
+function buildPushupChips(angle, keypoints) {
+  const chips = [];
+  const ex = EXERCISES.pushup;
+  if (angle < ex.goodDepth) chips.push({text:'Full depth ✓', type:'good'});
+  else if (angle < 110) chips.push({text:'Go deeper', type:'warn'});
+  const ls=kp(keypoints,'left_shoulder'), lh=kp(keypoints,'left_hip'), lk=kp(keypoints,'left_knee');
+  if (vis(ls)&&vis(lh)&&vis(lk)) {
+    const bodyLine = ls.y + (lk.y-ls.y)*0.5;
+    if (lh.y > bodyLine+25) chips.push({text:'Hip sag — brace core', type:'bad'});
+    else if (lh.y < bodyLine-25) chips.push({text:'Hips too high', type:'warn'});
+    else chips.push({text:'Body line ✓', type:'good'});
+  }
+  return chips;
+}
+
 function analyzeDip(keypoints) {
-  const ls = kp(keypoints,'left_shoulder'), rs = kp(keypoints,'right_shoulder');
-  const le = kp(keypoints,'left_elbow'),   re = kp(keypoints,'right_elbow');
-  const lw = kp(keypoints,'left_wrist'),   rw = kp(keypoints,'right_wrist');
-  const lh = kp(keypoints,'left_hip');
-
-  if (!visible(ls)||!visible(le)||!visible(lw)) return null;
-
-  const leftElbow  = getAngle(ls, le, lw);
-  const rightElbow = visible(rs)&&visible(re)&&visible(rw) ? getAngle(rs, re, rw) : leftElbow;
-  const elbowAngle = Math.round((leftElbow + rightElbow) / 2);
-
+  const ls=kp(keypoints,'left_shoulder'), rs=kp(keypoints,'right_shoulder');
+  const le=kp(keypoints,'left_elbow'),   re=kp(keypoints,'right_elbow');
+  const lw=kp(keypoints,'left_wrist'),   rw=kp(keypoints,'right_wrist');
+  if (!vis(ls)||!vis(le)||!vis(lw)) return null;
+  const leftA = getAngle(ls,le,lw);
+  const rightA = vis(rs)&&vis(re)&&vis(rw) ? getAngle(rs,re,rw) : leftA;
+  const angle = Math.round((leftA+rightA)/2);
   const ex = EXERCISES.dip;
-  if (repState === 'top' && elbowAngle < ex.bottomAngle) repState = 'bottom';
-  else if (repState === 'bottom' && elbowAngle > ex.topAngle - 15) { repState = 'top'; countRep(elbowAngle); }
+
+  if (repState==='top' && angle < ex.bottomAngle+10) repState = 'bottom';
+  else if (repState==='bottom' && angle > ex.topAngle-15) {
+    repState = 'top';
+    const score = angle < ex.goodDepth ? 100 : 70;
+    repCount++; formScores.push(score);
+    if (bestAngle===null || angle < bestAngle) bestAngle = angle;
+    repLog.push({num:repCount, angle, chips:[{text:angle<ex.goodDepth?'Full depth ✓':'Shallow rep',type:angle<ex.goodDepth?'good':'warn'}], formScore:score});
+    updateRepDisplay();
+  }
 
   const chips = [];
-  let main = '';
-  let formScore = 100;
+  if (angle < ex.goodDepth) chips.push({text:'Full depth ✓', type:'good'});
+  else if (angle < 110) chips.push({text:'Go deeper', type:'warn'});
+  if (angle > 155) chips.push({text:'Locked out ✓', type:'good'});
 
-  if (elbowAngle < ex.goodDepth) {
-    chips.push({text:'Full depth ✓', type:'good'});
-    main = 'Great depth — push up';
-  } else if (elbowAngle < 100 && repState === 'bottom') {
-    chips.push({text:'Deeper', type:'warn'});
-    main = 'Go deeper — upper arms parallel';
-    formScore -= 25;
-  }
-
-  // Forward lean (chest dip)
-  if (visible(ls) && visible(lh)) {
-    const lean = lh.x - ls.x;
-    if (Math.abs(lean) > 50) {
-      chips.push({text:'Forward lean', type:'warn'});
-      if (!main) main = 'Lean forward for chest focus';
-    } else {
-      chips.push({text:'Upright ✓', type:'good'});
-      if (!main) main = 'Good upright posture — tricep dip';
-    }
-  }
-
-  if (elbowAngle > 155) {
-    chips.push({text:'Locked out ✓', type:'good'});
-    if (!main) main = 'Full lockout — lower with control';
-  }
-
-  return { angle: elbowAngle, chips, main, formScore,
-    depth: elbowAngle < ex.goodDepth ? '✓' : `${elbowAngle}°` };
+  return { angle, chips, main: angle<ex.goodDepth?'Good depth — push up!':angle>155?'Full lockout — lower with control':'Dipping…', formScore:angle<ex.goodDepth?100:70, depth:angle<ex.goodDepth?'✓':angle+'°' };
 }
 
-// ── HSPU ──
 function analyzeHSPU(keypoints) {
-  const ls = kp(keypoints,'left_shoulder'), rs = kp(keypoints,'right_shoulder');
-  const le = kp(keypoints,'left_elbow'),   re = kp(keypoints,'right_elbow');
-  const lw = kp(keypoints,'left_wrist'),   rw = kp(keypoints,'right_wrist');
-  const lh = kp(keypoints,'left_hip'),     rh = kp(keypoints,'right_hip');
-
-  if (!visible(ls)||!visible(le)||!visible(lw)) return null;
-
-  const leftElbow  = getAngle(ls, le, lw);
-  const rightElbow = visible(rs)&&visible(re)&&visible(rw) ? getAngle(rs, re, rw) : leftElbow;
-  const elbowAngle = Math.round((leftElbow + rightElbow) / 2);
-
+  const ls=kp(keypoints,'left_shoulder'), rs=kp(keypoints,'right_shoulder');
+  const le=kp(keypoints,'left_elbow'),   re=kp(keypoints,'right_elbow');
+  const lw=kp(keypoints,'left_wrist'),   rw=kp(keypoints,'right_wrist');
+  const lh=kp(keypoints,'left_hip');
+  if (!vis(ls)||!vis(le)||!vis(lw)) return null;
+  const leftA = getAngle(ls,le,lw);
+  const rightA = vis(rs)&&vis(re)&&vis(rw) ? getAngle(rs,re,rw) : leftA;
+  const angle = Math.round((leftA+rightA)/2);
   const ex = EXERCISES.hspu;
-  if (repState === 'top' && elbowAngle < ex.bottomAngle) repState = 'bottom';
-  else if (repState === 'bottom' && elbowAngle > ex.topAngle - 15) { repState = 'top'; countRep(elbowAngle); }
+
+  if (repState==='top' && angle < ex.bottomAngle+10) repState = 'bottom';
+  else if (repState==='bottom' && angle > ex.topAngle-15) {
+    repState = 'top';
+    const score = angle < ex.goodDepth ? 100 : 70;
+    repCount++; formScores.push(score);
+    if (bestAngle===null || angle < bestAngle) bestAngle = angle;
+    repLog.push({num:repCount, angle, chips:[], formScore:score});
+    updateRepDisplay();
+  }
 
   const chips = [];
-  let main = '';
-  let formScore = 100;
-
-  if (elbowAngle < ex.goodDepth) {
-    chips.push({text:'Full depth ✓', type:'good'});
-    main = 'Good depth — press up!';
-  } else if (elbowAngle < 100 && repState === 'bottom') {
-    chips.push({text:'Go deeper', type:'warn'});
-    main = 'Head to floor for full rep';
-    formScore -= 25;
-  }
-
-  // Body alignment — hips over shoulders
-  if (visible(lh) && visible(ls)) {
+  if (angle < ex.goodDepth) chips.push({text:'Full depth ✓', type:'good'});
+  if (vis(ls)&&vis(lh)) {
     const offset = Math.abs(lh.x - ls.x);
-    if (offset > 40) {
-      chips.push({text:'Hip drift', type:'warn'});
-      if (!main) main = 'Stack hips over shoulders';
-      formScore -= 20;
-    } else {
-      chips.push({text:'Aligned ✓', type:'good'});
-      if (!main) main = 'Good body line — stay tight';
-    }
+    if (offset > 40) chips.push({text:'Hip drift — stack hips', type:'warn'});
+    else chips.push({text:'Aligned ✓', type:'good'});
   }
-
-  if (elbowAngle > 155) {
-    chips.push({text:'Locked out ✓', type:'good'});
-    if (!main) main = 'Full lockout — lower with control';
-  }
-
-  return { angle: elbowAngle, chips, main, formScore,
-    depth: elbowAngle < EXERCISES.hspu.goodDepth ? '✓' : `${elbowAngle}°` };
+  return { angle, chips, main: angle<ex.goodDepth?'Full depth — press!':angle>155?'Locked out — lower with control':'Pressing…', formScore:angle<ex.goodDepth?100:70, depth:angle<ex.goodDepth?'✓':angle+'°' };
 }
 
 // ══════════════════════════════════════════
-// REP COUNTING + UI
+// UI UPDATES
 // ══════════════════════════════════════════
-function countRep(angle) {
-  repCount++;
-  formScores.push(angle < currentExercise.goodDepth ? 100 : 70);
-  repHistory.unshift({ num: repCount, angle });
-  if (repHistory.length > 10) repHistory.pop();
-  if (repCount > bestReps) bestReps = repCount;
-  updateRepDisplay();
-  renderHistory();
+function updateLiveUI(result) {
+  const ad = document.getElementById('angleDisplay');
+  const av = document.getElementById('angleVal');
+  av.textContent = result.angle + '°';
+  av.style.color = result.angle < currentExercise.goodDepth ? '#00e676' : result.angle < currentExercise.goodDepth+30 ? '#ffab00' : '#f2f2f2';
+  ad.classList.add('show');
+  document.getElementById('feedbackChips').innerHTML = result.chips.map(c=>`
+    <div class="feedback-chip ${c.type} show"><div class="chip-dot"></div>${c.text}</div>`).join('');
+  document.getElementById('mainFeedback').textContent = result.main;
+  document.getElementById('statDepth').textContent = result.depth;
+  const avg = formScores.length > 0 ? Math.round(formScores.reduce((a,b)=>a+b,0)/formScores.length) : null;
+  if (avg !== null) {
+    const el = document.getElementById('statForm');
+    el.textContent = avg + '%';
+    el.className = 'stat-val ' + (avg>=85?'green':avg>=65?'amber':'red');
+  }
+  if (bestAngle !== null) document.getElementById('statBest').textContent = bestAngle + '°';
 }
 
 function updateRepDisplay() {
   document.getElementById('statReps').textContent = repCount;
-  document.getElementById('statBest').textContent = bestReps;
-  document.getElementById('hudReps').textContent = repCount + (repCount === 1 ? ' rep' : ' reps');
-}
-
-function updateUI(result) {
-  // Angle display
-  const ad = document.getElementById('angleDisplay');
-  document.getElementById('angleVal').textContent = result.angle + '°';
-  ad.classList.add('show');
-
-  // Color angle by quality
-  const av = document.getElementById('angleVal');
-  if (result.angle < currentExercise.goodDepth) av.style.color = '#00e676';
-  else if (result.angle < currentExercise.goodDepth + 30) av.style.color = '#ffab00';
-  else av.style.color = '#f2f2f2';
-
-  // Stats
-  document.getElementById('statDepth').textContent = result.depth;
-  const avgForm = formScores.length > 0
-    ? Math.round(formScores.reduce((a,b)=>a+b,0)/formScores.length)
-    : '--';
-  const formEl = document.getElementById('statForm');
-  formEl.textContent = avgForm !== '--' ? avgForm + '%' : '--';
-  formEl.className = 'stat-val ' + (avgForm > 85 ? 'green' : avgForm > 65 ? 'amber' : 'red');
-
-  // Feedback chips
-  const chipsEl = document.getElementById('feedbackChips');
-  chipsEl.innerHTML = result.chips.map(c => `
-    <div class="feedback-chip ${c.type} show">
-      <div class="chip-dot"></div>${c.text}
-    </div>`).join('');
-
-  // Main feedback
-  document.getElementById('mainFeedback').textContent = result.main;
-}
-
-function renderHistory() {
-  const strip = document.getElementById('historyStrip');
-  if (repHistory.length === 0) return;
-  strip.innerHTML = repHistory.map(h => `
-    <div class="hist-item ${h.angle < currentExercise.goodDepth ? 'best' : ''}">
-      <div class="hist-val">${h.num}</div>
-      <div class="hist-lbl">${h.angle}°</div>
-    </div>`).join('');
+  document.getElementById('hudReps').textContent = repCount + (repCount===1?' rep':' reps');
+  if (currentMode === 'review') renderRepTimeline();
 }
 
 function resetSession() {
-  repCount = 0; repState = 'top'; repHistory = []; formScores = [];
-  updateRepDisplay();
-  document.getElementById('statDepth').textContent = '--';
-  document.getElementById('statForm').textContent = '--';
-  document.getElementById('historyStrip').innerHTML = '';
-  document.getElementById('feedbackChips').innerHTML = '';
-  document.getElementById('mainFeedback').textContent = '';
+  repCount=0; repState='top'; repLog=[]; formScores=[]; bestAngle=null;
+  document.getElementById('statReps').textContent='0';
+  document.getElementById('statDepth').textContent='--';
+  document.getElementById('statForm').textContent='--';
+  document.getElementById('statBest').textContent='--';
+  document.getElementById('hudReps').textContent='0 reps';
+  document.getElementById('feedbackChips').innerHTML='';
+  document.getElementById('mainFeedback').textContent='';
   document.getElementById('angleDisplay').classList.remove('show');
+  document.getElementById('repTimeline').innerHTML='';
 }
 </script>
 </body>
