@@ -643,9 +643,14 @@ function toggleTracking() {
 }
 
 function startTracking() {
+  if (!detector) {
+    document.getElementById('mainFeedback').textContent = 'Model still loading — wait a moment';
+    return;
+  }
   tracking = true;
   document.getElementById('startBtn').innerHTML = '<span class="rec-dot"></span> Tracking';
   document.getElementById('startBtn').className = 'btn btn-stop';
+  document.getElementById('mainFeedback').textContent = 'Step into frame…';
   poseLoop();
 }
 
@@ -659,18 +664,38 @@ function stopTracking() {
 async function poseLoop() {
   if (!tracking || !detector) return;
   const vid = document.getElementById('video');
-  if (vid.readyState < 2) { animFrame = requestAnimationFrame(poseLoop); return; }
+
+  // Wait until video has enough data
+  if (vid.readyState < 3 || vid.videoWidth === 0) {
+    animFrame = requestAnimationFrame(poseLoop);
+    return;
+  }
+
+  // Sync canvas size to video
+  const canvas = document.getElementById('poseCanvas');
+  if (canvas.width !== vid.videoWidth) {
+    canvas.width = vid.videoWidth;
+    canvas.height = vid.videoHeight;
+  }
 
   try {
     const poses = await detector.estimatePoses(vid, { flipHorizontal: false });
-    if (poses.length > 0) {
+    if (poses && poses.length > 0) {
       drawPose(poses[0]);
       const result = currentExercise.analyze(poses[0].keypoints);
       if (result) updateUI(result);
+    } else {
+      // No person detected — show hint
+      document.getElementById('mainFeedback').textContent = 'Step into frame…';
     }
-  } catch(e) {}
+  } catch(e) {
+    console.error('Pose error:', e);
+    // Don't crash loop on single frame error
+  }
 
-  animFrame = requestAnimationFrame(poseLoop);
+  if (tracking) {
+    animFrame = requestAnimationFrame(poseLoop);
+  }
 }
 
 // ══════════════════════════════════════════
